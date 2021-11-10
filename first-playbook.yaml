@@ -1,0 +1,64 @@
+---
+
+# The first/root level of the playbook defines a "play"
+# https://docs.ansible.com/ansible/latest/reference_appendices/playbooks_keywords.html#play
+
+- name: First run playbook
+  hosts: rpi4
+  remote_user: alarm
+  # become the root user
+  become: true
+  # Arch LinuxARM doesn't have sudo by default
+  become_method: su
+
+  # Declare the tasks that will be run on the target hosts
+  # https://docs.ansible.com/ansible/latest/reference_appendices/playbooks_keywords.html#task
+  tasks:
+
+  # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/group_module.html
+  - name: Create Ansible group
+    group:
+      name: ansible
+      gid: 1024
+
+  # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/user_module.html
+  - name: Create Ansible user
+    user:
+      name: ansible
+      password: "!"
+      home: /home/ansible
+      shell: /bin/bash
+      uid: 1024
+      group: ansible
+
+  # https://docs.ansible.com/ansible/latest/collections/ansible/posix/authorized_key_module.html
+  - name: Set up SSH keys
+    authorized_key:
+      exclusive: true
+      user: ansible
+      key: https://github.com/channelbeta.keys
+
+  # https://docs.ansible.com/ansible/latest/collections/community/general/pacman_module.html
+  - name: Install sudo package
+    pacman:
+      state: present
+      update_cache: false
+      name:
+        - sudo
+
+  # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/copy_module.html
+  - name: Allow all sudo commands for the Ansible user
+    copy:
+      content: |
+        ansible ALL=(ALL) NOPASSWD: ALL
+      dest: /etc/sudoers.d/01-ansible-no-password
+      group: root
+      owner: root
+      mode: 0440
+      validate: /usr/bin/visudo --check --strict --file %s
+
+  # We had an error in this task because of a systemd instance for this user
+  # - name: Remove default Arch Linux ARM user
+  #   user:
+  #     name: alarm
+  #     state: absent
