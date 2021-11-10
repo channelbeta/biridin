@@ -42,6 +42,8 @@
   - name: Install sudo package
     pacman:
       state: present
+      # We don't want to update the cache to avoid a situation of partial upgrades
+      # https://wiki.archlinux.org/title/System_maintenance#Partial_upgrades_are_unsupported
       update_cache: false
       name:
         - sudo
